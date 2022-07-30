@@ -1,30 +1,106 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net"
+	"net/http"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/maximgoltsov/botproject/config"
-	"github.com/maximgoltsov/botproject/internal/commander"
-	"github.com/maximgoltsov/botproject/internal/handlers"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	apiPkg "github.com/maximgoltsov/botproject/internal/api"
+	botPkg "github.com/maximgoltsov/botproject/internal/pkg/bot"
+
+	cmdAddPkg "github.com/maximgoltsov/botproject/internal/pkg/bot/command/add"
+	cmdDeletePkg "github.com/maximgoltsov/botproject/internal/pkg/bot/command/delete"
+	cmdEditPkg "github.com/maximgoltsov/botproject/internal/pkg/bot/command/edit"
+	cmdHelpPkg "github.com/maximgoltsov/botproject/internal/pkg/bot/command/help"
+	cmdListPkg "github.com/maximgoltsov/botproject/internal/pkg/bot/command/list"
+	productPkg "github.com/maximgoltsov/botproject/internal/pkg/core/product"
+	pb "github.com/maximgoltsov/botproject/pkg/api"
 )
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI(config.ApiKey)
-	if err != nil {
-		log.Panic(err)
+	var product productPkg.Interface
+	{
+		product = productPkg.New()
 	}
 
-	commander, err := commander.Init(bot)
+	var bot botPkg.Interface
+	{
+		bot = botPkg.MustNew()
 
-	if err != nil {
-		log.Panic(err)
+		commandAdd := cmdAddPkg.New(product)
+		bot.RegisterHandler(commandAdd)
+
+		commandDelete := cmdDeletePkg.New(product)
+		bot.RegisterHandler(commandDelete)
+
+		commandEdit := cmdEditPkg.New(product)
+		bot.RegisterHandler(commandEdit)
+
+		commandList := cmdListPkg.New(product)
+		bot.RegisterHandler(commandList)
+
+		commandHelp := cmdHelpPkg.New(map[string]string{
+			commandAdd.Name():    commandAdd.Description(),
+			commandDelete.Name(): commandDelete.Description(),
+			commandEdit.Name():   commandEdit.Description(),
+			commandList.Name():   commandList.Description(),
+		})
+		bot.RegisterHandler(commandHelp)
 	}
 
-	handlers.AddHandlers(commander)
+	go runBot(bot)
+	go runREST()
+	runGRPCServer(product)
+}
 
-	if err := commander.Run(); err != nil {
+func runGRPCServer(product productPkg.Interface) {
+	listener, err := net.Listen("tcp", ":8081")
+	if err != nil {
+		panic(err)
+	}
+
+	grpcServer := grpc.NewServer()
+	pb.RegisterProductServer(grpcServer, apiPkg.New(product))
+
+	if err = grpcServer.Serve(listener); err != nil {
+		panic(err)
+	}
+}
+
+func runBot(bot botPkg.Interface) {
+	if err := bot.Run(); err != nil {
 		log.Panic(err)
 	}
 }
+
+func runREST() {
+	ctx := context.Background()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	mux := runtime.NewServeMux()
+
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	if err := pb.RegisterProductHandlerFromEndpoint(ctx, mux, ":8081", opts); err != nil {
+		panic(err)
+	}
+
+	if err := http.ListenAndServe(":8080", mux); err != nil {
+		panic(err)
+	}
+}
+
+// func headerMatcherREST(key string) (string, bool) {
+// 	switch key {
+// 	case "Custom":
+// 		return key, true
+// 	default:
+// 		return key, false
+// 	}
+// }

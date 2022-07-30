@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package ozon.dev.mc2.api;
+option go_package = "github.com/maximgoltsov/botproject/pkg/api;api";
+
+import "google/api/annotations.proto";
+
+service Product {
+    rpc ProductCreate(ProductCreateRequest) returns (ProductCreateResponse) {
+        option (google.api.http) = {
+            post: "/v1/product"
+            body: "*"
+        };
+    }
+    rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse){
+        option (google.api.http) = {
+            delete: "/v1/product/{id}"
+        };
+    }
+    rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse){
+        option (google.api.http) = {
+            put: "/v1/product"
+            body: "*"
+        };
+    }
+    rpc ProductGet(ProductGetRequest) returns (ProductGetResponse){
+        option (google.api.http) = {
+            get: "/v1/product/{id}"
+        };
+    }
+    rpc ProductList(ProductListRequest) returns (ProductListResponse){
+        option (google.api.http) = {
+            get: "/v1/products"
+        };
+    }
+}
+
+message ProductCreateRequest {
+    string title    = 1;
+    int64 price     = 2;
+}
+message ProductCreateResponse {}
+
+message ProductDeleteRequest {
+    int64 id = 1;
+}
+message ProductDeleteResponse {}
+
+message ProductUpdateRequest {
+    int64 id        = 1;
+    string title    = 2;
+    int64 price     = 3;
+}
+message ProductUpdateResponse {}
+
+message ProductGetRequest {
+    int64 id = 1;
+}
+message ProductGetResponse {
+    int64 id        = 1;
+    string title    = 2;
+    int64 price     = 3;
+}
+
+message ProductListRequest {}
+message ProductListResponse {
+    repeated Product products = 1;
+
+    message Product {
+        int64 id        = 1;
+        string title    = 2;
+        int64 price     = 3;
+    }
+}
