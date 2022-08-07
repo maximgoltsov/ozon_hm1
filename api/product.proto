@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package ozon.dev.mc2.api;
+option go_package = "github.com/maximgoltsov/botproject/pkg/api;api";
+
+import "google/api/annotations.proto";
+
+service Product {
+    rpc ProductCreate(ProductCreateRequest) returns (ProductCreateResponse) {
+        option (google.api.http) = {
+            post: "/v1/product"
+            body: "*"
+        };
+    }
+    rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse){
+        option (google.api.http) = {
+            delete: "/v1/product/{id}"
+        };
+    }
+    rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse){
+        option (google.api.http) = {
+            put: "/v1/product"
+            body: "*"
+        };
+    }
+    rpc ProductGet(ProductGetRequest) returns (ProductGetResponse){
+        option (google.api.http) = {
+            get: "/v1/product/{id}"
+        };
+    }
+    rpc ProductList(ProductListRequest) returns (ProductListResponse){
+        option (google.api.http) = {
+            get: "/v1/products"
+        };
+    }
+}
+
+message ProductCreateRequest {
+    string title    = 1;
+    uint64 price    = 2;
+    uint64 type_id  = 3;
+}
+message ProductCreateResponse {
+    uint64 id       = 1;
+}
+
+message ProductDeleteRequest {
+    uint64 id       = 1;
+}
+message ProductDeleteResponse {}
+
+message ProductUpdateRequest {
+    uint64 id       = 1;
+    string title    = 2;
+    uint64 price    = 3;
+    uint64 type_id  = 4;
+}
+message ProductUpdateResponse {
+    uint64 id   = 1;
+}
+
+message ProductGetRequest {
+    uint64 id   = 1;
+}
+message ProductGetResponse {
+    uint64 id       = 1;
+    string title    = 2;
+    uint64 price    = 3;
+    uint64 type_id  = 4;
+}
+
+message ProductListRequest {
+    bool desc       = 1;
+    uint64 limit    = 2;
+    uint64 offset   = 3;
+}
+message ProductListResponse {
+    repeated Product products = 1;
+
+    message Product {
+        uint64 id       = 1;
+        string title    = 2;
+        uint64 price    = 3;
+        uint64 type_id  = 4;
+    }
+}

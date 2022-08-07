@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package ozon.dev.mc2.api;
+option go_package = "github.com/maximgoltsov/botproject/pkg/api;api";
+
+import "google/api/annotations.proto";
+
+service ProductType {
+    rpc ProductTypeCreate (ProductTypeCreateRequest) returns (ProductTypeCreateResponse) {
+        option (google.api.http) = {
+            post: "/v1/productType"
+            body: "*"
+        };
+    }
+    rpc ProductTypeDelete (ProductTypeDeleteRequest) returns (ProductTypeDeleteResponse) {
+        option (google.api.http) = {
+            delete: "/v1/productType/{id}"
+        };
+    }
+    rpc ProductTypeUpdate (ProductTypeUpdateRequest) returns (ProductTypeUpdateResponse) {
+        option (google.api.http) = {
+            put: "/v1/productType"
+            body: "*"
+        };
+    }
+    rpc ProductTypeGet (ProductTypeGetRequest) returns (ProductTypeGetResponse) {
+        option (google.api.http) = {
+            get: "/v1/productType/{id}"
+        };
+    }
+    rpc ProductTypeList (ProductTypeListRequest) returns (ProductTypeListResponse) {
+        option (google.api.http) = {
+            get: "/v1/productType"
+        };
+    }
+}
+
+message ProductTypeCreateRequest {
+    string name = 1;
+}
+message ProductTypeCreateResponse {
+    uint64 id = 1;
+}
+
+message ProductTypeDeleteRequest {
+    uint64 id = 1;
+}
+message ProductTypeDeleteResponse {}
+
+message ProductTypeUpdateRequest {
+    uint64 id = 1;
+    string name = 2;
+}
+message ProductTypeUpdateResponse {
+    uint64 id = 1;
+}
+
+message ProductTypeGetRequest {
+    uint64 id = 1;
+}
+message ProductTypeGetResponse {
+    uint64 id = 1;
+    string name = 2;
+}
+
+message ProductTypeListRequest {}
+message ProductTypeListResponse {
+    repeated ProductType productTypes = 1;
+
+    message ProductType {
+        uint64 id = 1;
+        string name = 2;
+    }
+}

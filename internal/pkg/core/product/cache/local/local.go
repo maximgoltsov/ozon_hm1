@@ -1,6 +1,7 @@
 package local
 
 import (
+	"sort"
 	"strconv"
 	"sync"
 
@@ -33,7 +34,7 @@ type cache struct {
 	poolCh chan struct{}
 }
 
-func (c *cache) GetProducts() []models.Product {
+func (c *cache) GetProducts(limit uint64, offset uint64, desc bool) []models.Product {
 	c.poolCh <- struct{}{}
 	c.mu.RLock()
 	defer func() {
@@ -47,7 +48,16 @@ func (c *cache) GetProducts() []models.Product {
 		result = append(result, c.data[idx])
 	}
 
-	return result
+	if desc {
+		sort.Slice(result, func(a, b int) bool {
+			return result[a].Id > result[b].Id
+		})
+	}
+
+	if limit == 0 {
+		return result
+	}
+	return result[offset : limit+offset]
 }
 
 func (c *cache) GetProduct(id uint64) (models.Product, error) {
@@ -67,7 +77,7 @@ func (c *cache) GetProduct(id uint64) (models.Product, error) {
 	return product, nil
 }
 
-func (c *cache) UpsertProduct(p models.Product) error {
+func (c *cache) UpsertProduct(p models.Product) (uint64, error) {
 	c.poolCh <- struct{}{}
 	c.mu.Lock()
 	defer func() {
@@ -76,11 +86,11 @@ func (c *cache) UpsertProduct(p models.Product) error {
 	}()
 
 	if p.Id != 0 {
-		return updateProduct(p, c)
+		return p.Id, updateProduct(p, c)
 	} else {
 		lastId++
 		p.Id = lastId
-		return addProduct(p, c)
+		return p.Id, addProduct(p, c)
 	}
 }
 

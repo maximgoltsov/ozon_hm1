@@ -32,7 +32,7 @@ func (c *command) Description() string {
 
 func (c *command) Process(args string) string {
 
-	products := c.product.GetProducts()
+	products := c.product.GetProducts(0, 0, false)
 
 	sort.Slice(products, func(i, j int) bool {
 		return products[i].Id < products[j].Id

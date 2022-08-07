@@ -2,11 +2,9 @@ package api
 
 import (
 	"context"
-	"log"
 
 	errorsPkg "github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	productPkg "github.com/maximgoltsov/botproject/internal/pkg/core/product"
@@ -26,22 +24,24 @@ type implementation struct {
 }
 
 func (i *implementation) ProductCreate(ctx context.Context, in *pb.ProductCreateRequest) (*pb.ProductCreateResponse, error) {
-	if err := i.product.UpsertProduct(models.Product{
-		Id:    0,
-		Title: in.GetTitle(),
-		Price: uint64(in.GetPrice()),
-	}); err != nil {
+	id, err := i.product.UpsertProduct(models.Product{
+		Id:      0,
+		Title:   in.GetTitle(),
+		Price:   uint64(in.GetPrice()),
+		Type_Id: in.GetTypeId(),
+	})
+	if err != nil {
 		if errorsPkg.Is(err, productPkg.ErrValidation) {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &pb.ProductCreateResponse{}, nil
+	return &pb.ProductCreateResponse{Id: id}, nil
 }
 
 func (i *implementation) ProductDelete(ctx context.Context, in *pb.ProductDeleteRequest) (*pb.ProductDeleteResponse, error) {
-	if err := i.product.DeleteProductById(uint64(in.GetId())); err != nil {
+	if err := i.product.DeleteProductById(in.GetId()); err != nil {
 		if errorsPkg.Is(err, productPkg.ErrValidation) {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
@@ -52,48 +52,47 @@ func (i *implementation) ProductDelete(ctx context.Context, in *pb.ProductDelete
 }
 
 func (i *implementation) ProductUpdate(ctx context.Context, in *pb.ProductUpdateRequest) (*pb.ProductUpdateResponse, error) {
-	if err := i.product.UpsertProduct(models.Product{
-		Id:    uint64(in.GetId()),
-		Title: in.GetTitle(),
-		Price: uint64(in.GetPrice()),
-	}); err != nil {
+	id, err := i.product.UpsertProduct(models.Product{
+		Id:      uint64(in.GetId()),
+		Title:   in.GetTitle(),
+		Price:   uint64(in.GetPrice()),
+		Type_Id: in.GetTypeId(),
+	})
+	if err != nil {
 		if errorsPkg.Is(err, productPkg.ErrValidation) {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &pb.ProductUpdateResponse{}, nil
+	return &pb.ProductUpdateResponse{Id: id}, nil
 }
 
 func (i *implementation) ProductGet(ctx context.Context, in *pb.ProductGetRequest) (*pb.ProductGetResponse, error) {
-	product, err := i.product.GetProduct(uint64(in.GetId()))
+	product, err := i.product.GetProduct(in.GetId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &pb.ProductGetResponse{
-		Id:    int64(product.Id),
-		Title: product.Title,
-		Price: int64(product.Price),
+		Id:     product.Id,
+		Title:  product.Title,
+		Price:  product.Price,
+		TypeId: product.Type_Id,
 	}, nil
 }
 
 func (i *implementation) ProductList(ctx context.Context, in *pb.ProductListRequest) (*pb.ProductListResponse, error) {
-	ctxData, ok := metadata.FromIncomingContext(ctx)
-	if ok {
-		log.Println(ctxData.Get("custom"))
-	}
-
-	products := i.product.GetProducts()
+	products := i.product.GetProducts(in.GetLimit(), in.GetOffset(), in.GetDesc())
 
 	result := make([]*pb.ProductListResponse_Product, 0, len(products))
 
 	for idx := range products {
 		result = append(result, &pb.ProductListResponse_Product{
-			Id:    int64(products[idx].Id),
-			Title: products[idx].Title,
-			Price: int64(products[idx].Price),
+			Id:     products[idx].Id,
+			Title:  products[idx].Title,
+			Price:  products[idx].Price,
+			TypeId: products[idx].Type_Id,
 		})
 	}
 

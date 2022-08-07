@@ -48,11 +48,13 @@ func (c *command) Process(args string) string {
 		return err.Error()
 	}
 
-	if err := c.product.UpsertProduct(models.Product{
+	_, err = c.product.UpsertProduct(models.Product{
 		Id:    id,
 		Title: title,
 		Price: price,
-	}); err != nil {
+	})
+
+	if err != nil {
 		if errors.Is(err, productPkg.ErrValidation) {
 			return ErrBadArgument.Error()
 		}
