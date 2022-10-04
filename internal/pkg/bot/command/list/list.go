@@ -1,6 +1,7 @@
 package list
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -30,9 +31,9 @@ func (c *command) Description() string {
 	return " - list products"
 }
 
-func (c *command) Process(args string) string {
+func (c *command) Process(ctx context.Context, args string) string {
 
-	products := c.product.GetProducts(0, 0, false)
+	products := c.product.GetProducts(ctx, 0, 0, false)
 
 	sort.Slice(products, func(i, j int) bool {
 		return products[i].Id < products[j].Id

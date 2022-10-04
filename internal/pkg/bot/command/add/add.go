@@ -1,6 +1,7 @@
 package add
 
 import (
+	"context"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -31,7 +32,7 @@ func (c *command) Description() string {
 	return "<title> <price> - add new product with title and price"
 }
 
-func (c *command) Process(args string) string {
+func (c *command) Process(ctx context.Context, args string) string {
 	params := strings.Split(args, " ")
 	if len(params) != 2 {
 		return ErrBadArgument.Error()
@@ -42,7 +43,7 @@ func (c *command) Process(args string) string {
 		return err.Error()
 	}
 
-	_, err = c.product.UpsertProduct(models.Product{
+	_, err = c.product.UpsertProduct(ctx, models.Product{
 		Title: title,
 		Price: price,
 	})

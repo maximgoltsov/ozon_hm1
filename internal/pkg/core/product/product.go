@@ -1,51 +1,49 @@
 package product
 
 import (
-	"github.com/jackc/pgx/v4/pgxpool"
+	"context"
+
 	"github.com/pkg/errors"
 
-	cachePkg "github.com/maximgoltsov/botproject/internal/pkg/core/product/cache"
-	postgresPkg "github.com/maximgoltsov/botproject/internal/pkg/core/product/cache/postgres"
-	"github.com/maximgoltsov/botproject/internal/pkg/core/product/models"
+	models "github.com/maximgoltsov/botproject/internal/pkg/core/product/models"
+	repositoryPkg "github.com/maximgoltsov/botproject/internal/pkg/repository"
 )
 
 var ErrValidation = errors.New("invalid data")
 
 type Interface interface {
-	UpsertProduct(product models.Product) (uint64, error)
-	DeleteProductById(id uint64) error
-	GetProduct(id uint64) (models.Product, error)
-	GetProducts(limit uint64, offset uint64, desc bool) []models.Product
+	UpsertProduct(ctx context.Context, product models.Product) (uint64, error)
+	DeleteProductById(ctx context.Context, id uint64) error
+	GetProduct(ctx context.Context, id uint64) (models.Product, error)
+	GetProducts(ctx context.Context, limit uint64, offset uint64, desc bool) []models.Product
 }
 
-func New(pool *pgxpool.Pool) Interface {
+func New(repository repositoryPkg.Product) Interface {
 	return &core{
-		pool:  pool,
-		cache: postgresPkg.New(pool),
+		repository: repository,
 	}
 }
 
 type core struct {
-	pool  *pgxpool.Pool
-	cache cachePkg.Interface
+	repository repositoryPkg.Product
 }
 
-func (c *core) UpsertProduct(product models.Product) (uint64, error) {
+func (c *core) UpsertProduct(ctx context.Context, product models.Product) (uint64, error) {
 	if product.Title == "" {
 		return 0, errors.Wrap(ErrValidation, "field: [title] cannot be empty")
 	}
 
-	return c.cache.UpsertProduct(product)
+	return c.repository.UpsertProduct(ctx, product)
 }
 
-func (c *core) DeleteProductById(id uint64) error {
-	return c.cache.DeleteProductById(id)
+func (c *core) DeleteProductById(ctx context.Context, id uint64) error {
+	return c.repository.DeleteProductById(ctx, id)
 }
 
-func (c *core) GetProduct(id uint64) (models.Product, error) {
-	return c.cache.GetProduct(id)
+func (c *core) GetProduct(ctx context.Context, id uint64) (models.Product, error) {
+	return c.repository.GetProduct(ctx, id)
 }
 
-func (c *core) GetProducts(limit uint64, offset uint64, desc bool) []models.Product {
-	return c.cache.GetProducts(limit, offset, desc)
+func (c *core) GetProducts(ctx context.Context, limit uint64, offset uint64, desc bool) []models.Product {
+	return c.repository.GetProducts(ctx, limit, offset, desc)
 }

@@ -1,6 +1,7 @@
 package delete
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -31,7 +32,7 @@ func (c *command) Description() string {
 	return "<id> - delete product with passed id"
 }
 
-func (c *command) Process(args string) string {
+func (c *command) Process(ctx context.Context, args string) string {
 	params := strings.Split(args, " ")
 	if len(params) != 1 {
 		return ErrBadArgument.Error()
@@ -42,7 +43,7 @@ func (c *command) Process(args string) string {
 		return err.Error()
 	}
 
-	if err := c.product.DeleteProductById(id); err != nil {
+	if err := c.product.DeleteProductById(ctx, id); err != nil {
 		return err.Error()
 	}
 

@@ -68,7 +68,7 @@ func (i *productTypeImplementation) ProductTypeGet(ctx context.Context, in *pb.P
 }
 
 func (i *productTypeImplementation) ProductTypeList(ctx context.Context, in *pb.ProductTypeListRequest) (*pb.ProductTypeListResponse, error) {
-	productTypes := i.productType.GetProductTypes(ctx)
+	productTypes := i.productType.GetProductTypes(ctx, in.GetLimit(), in.GetOffset(), in.GetDesc())
 
 	result := make([]*pb.ProductTypeListResponse_ProductType, 0, len(productTypes))
 

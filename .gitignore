@@ -1,0 +1,8 @@
+.idea
+.vscode
+apikey.go
+config.go
+postgresql
+bin/bot
+bin/validator
+kafka/kafka_data

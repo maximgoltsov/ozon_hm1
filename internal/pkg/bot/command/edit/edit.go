@@ -1,6 +1,7 @@
 package edit
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -32,7 +33,7 @@ func (c *command) Description() string {
 	return "<id> <title> <price> - edit title and price of product with passed id"
 }
 
-func (c *command) Process(args string) string {
+func (c *command) Process(ctx context.Context, args string) string {
 	params := strings.Split(args, " ")[:]
 	if len(params) != 3 {
 		return ErrBadArgument.Error()
@@ -48,7 +49,7 @@ func (c *command) Process(args string) string {
 		return err.Error()
 	}
 
-	_, err = c.product.UpsertProduct(models.Product{
+	_, err = c.product.UpsertProduct(ctx, models.Product{
 		Id:    id,
 		Title: title,
 		Price: price,

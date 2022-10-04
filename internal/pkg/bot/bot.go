@@ -1,6 +1,7 @@
 package commander
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -48,6 +49,8 @@ func (c *commander) Run() error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 	updates := c.bot.GetUpdatesChan(u)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	for update := range updates {
 		if update.Message == nil {
@@ -58,14 +61,13 @@ func (c *commander) Run() error {
 
 		if cmdName := update.Message.Command(); cmdName != "" {
 			if cmd, ok := c.route[cmdName]; ok {
-				msg.Text = cmd.Process(update.Message.CommandArguments())
+				msg.Text = cmd.Process(ctx, update.Message.CommandArguments())
 			} else {
 				msg.Text = "Unknown command"
 			}
 		} else {
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 			msg.Text = fmt.Sprintf("you send <%v>", update.Message.Text)
-
 		}
 		_, err := c.bot.Send(msg)
 

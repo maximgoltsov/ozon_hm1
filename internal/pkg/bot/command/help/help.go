@@ -1,6 +1,7 @@
 package help
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -32,7 +33,7 @@ func (c *command) Description() string {
 	return "- list commands"
 }
 
-func (c *command) Process(_ string) string {
+func (c *command) Process(_ context.Context, _ string) string {
 	result := fmt.Sprintf("/%s - %s\n", c.Name(), c.Description())
 
 	for cmd, description := range c.extendedMap {

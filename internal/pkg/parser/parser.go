@@ -7,11 +7,12 @@ import (
 )
 
 var BadArgument = errors.New("bad arguments")
+var ErrInvalidIdParser = errors.Wrapf(BadArgument, "passed invalid id")
 
 func ParseId(data string) (uint64, error) {
 	id, err := strconv.ParseUint(data, 10, 64)
 	if err != nil {
-		return 0, errors.Wrapf(BadArgument, "passed invalid id")
+		return 0, ErrInvalidIdParser
 	}
 
 	return id, nil

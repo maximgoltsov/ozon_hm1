@@ -203,9 +203,20 @@ func local_request_ProductType_ProductTypeGet_0(ctx context.Context, marshaler r
 
 }
 
+var (
+	filter_ProductType_ProductTypeList_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_ProductType_ProductTypeList_0(ctx context.Context, marshaler runtime.Marshaler, client ProductTypeClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ProductTypeListRequest
 	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ProductType_ProductTypeList_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	msg, err := client.ProductTypeList(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
@@ -215,6 +226,13 @@ func request_ProductType_ProductTypeList_0(ctx context.Context, marshaler runtim
 func local_request_ProductType_ProductTypeList_0(ctx context.Context, marshaler runtime.Marshaler, server ProductTypeServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ProductTypeListRequest
 	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ProductType_ProductTypeList_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	msg, err := server.ProductTypeList(ctx, &protoReq)
 	return msg, metadata, err

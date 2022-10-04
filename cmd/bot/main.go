@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path"
 	"strings"
@@ -14,10 +14,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/Shopify/sarama"
 	"github.com/golang/glog"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jackc/pgx/v4/pgxpool"
 	apiPkg "github.com/maximgoltsov/botproject/internal/api"
+	kafkaPkg "github.com/maximgoltsov/botproject/internal/kafka"
 	botPkg "github.com/maximgoltsov/botproject/internal/pkg/bot"
 
 	cmdAddPkg "github.com/maximgoltsov/botproject/internal/pkg/bot/command/add"
@@ -27,16 +29,21 @@ import (
 	cmdListPkg "github.com/maximgoltsov/botproject/internal/pkg/bot/command/list"
 	productPkg "github.com/maximgoltsov/botproject/internal/pkg/core/product"
 	productTypePkg "github.com/maximgoltsov/botproject/internal/pkg/core/productType"
+	_ "github.com/maximgoltsov/botproject/internal/pkg/counter"
+	logger "github.com/maximgoltsov/botproject/internal/pkg/logger"
+	dbPkg "github.com/maximgoltsov/botproject/internal/pkg/repository/db"
 	pb "github.com/maximgoltsov/botproject/pkg/api"
 )
 
 func main() {
+	logger.InitLogger()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	const (
 		Host     = "localhost"
-		Port     = 7776
+		Port     = 5432
 		User     = "user"
 		Password = "password"
 		DBname   = "products"
@@ -51,12 +58,12 @@ func main() {
 
 	pool, err := pgxpool.Connect(ctx, psqlConn)
 	if err != nil {
-		log.Fatal("can't connect to database", err)
+		logger.Logger.Fatal("can't connect to database", err)
 	}
 	defer pool.Close()
 
 	if err := pool.Ping(ctx); err != nil {
-		log.Fatal("ping database error", err)
+		logger.Logger.Fatal("ping database error", err)
 	}
 
 	config := pool.Config()
@@ -69,15 +76,18 @@ func main() {
 	productType := initProductType(pool)
 	bot := initBot(product)
 
+	go runKafka()
 	go runBot(bot)
 	go runREST()
+	go http.ListenAndServe(":8888", nil)
 	runGRPCServer(product, productType)
 }
 
 func initProduct(pool *pgxpool.Pool) productPkg.Interface {
+
 	var product productPkg.Interface
 	{
-		product = productPkg.New(pool)
+		product = productPkg.New(dbPkg.NewProductRepository(pool))
 	}
 	return product
 }
@@ -122,7 +132,7 @@ func initBot(product productPkg.Interface) botPkg.Interface {
 func runGRPCServer(product productPkg.Interface, productType productTypePkg.Interface) {
 	listener, err := net.Listen("tcp", ":8081")
 	if err != nil {
-		panic(err)
+		logger.Logger.Fatal("can't start listener for gRPC server", err)
 	}
 
 	grpcServer := grpc.NewServer()
@@ -130,13 +140,13 @@ func runGRPCServer(product productPkg.Interface, productType productTypePkg.Inte
 	pb.RegisterProductTypeServer(grpcServer, apiPkg.NewProductType(productType))
 
 	if err = grpcServer.Serve(listener); err != nil {
-		panic(err)
+		logger.Logger.Fatal("can't start gRPC server", err)
 	}
 }
 
 func runBot(bot botPkg.Interface) {
 	if err := bot.Run(); err != nil {
-		log.Panic(err)
+		logger.Logger.Fatal("can't run bot", err)
 	}
 }
 
@@ -171,7 +181,7 @@ func runREST() {
 
 	path, err := os.Getwd()
 	if err != nil {
-		log.Println(err)
+		logger.Logger.Fatal("can't find swagger path", err)
 	}
 	swaggerDir := strings.Join([]string{path, "/bin"}, "")
 	httpMux.HandleFunc("/openapiv2/", openAPIServer(swaggerDir))
@@ -180,10 +190,10 @@ func runREST() {
 
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), withClientUnaryInterceptor()}
 	if err := pb.RegisterProductHandlerFromEndpoint(ctx, mux, ":8081", opts); err != nil {
-		panic(err)
+		logger.Logger.Fatal("can't register Product Handler", err)
 	}
 	if err := pb.RegisterProductTypeHandlerFromEndpoint(ctx, mux, ":8081", opts); err != nil {
-		panic(err)
+		logger.Logger.Fatal("can't register Product Type Handler", err)
 	}
 
 	httpMux.Handle("/", mux)
@@ -194,7 +204,27 @@ func runREST() {
 	}
 
 	if err := s.ListenAndServe(); err != nil {
-		panic(err)
+		logger.Logger.Fatal("can't start REST service", err)
+	}
+}
+
+func runKafka() {
+	brokers := []string{"localhost:9095"}
+	config := sarama.NewConfig()
+	config.Consumer.Offsets.Initial = sarama.OffsetOldest
+
+	client, err := sarama.NewConsumerGroup(brokers, "startConsuming", config)
+	if err != nil {
+		logger.Logger.Fatalf(err.Error())
+	}
+	logger.Logger.Info("Running kafka")
+	ctx := context.Background()
+	consumer := &kafkaPkg.BotConsumer{}
+	for {
+		if err := client.Consume(ctx, []string{"validator"}, consumer); err != nil {
+			logger.Logger.Infof("on consume: %v", err)
+			time.Sleep(time.Second * 10)
+		}
 	}
 }
 

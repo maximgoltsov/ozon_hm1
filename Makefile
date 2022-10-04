@@ -2,6 +2,10 @@ MIGRATIONS_DIR=./migrations
 DB_DSN=host=localhost port=5432 user=user password=password dbname=products sslmode=disable
 LOCAL_BIN:=$(CURDIR)/bin
 
+.PHONY: validator 
+validator:
+	go build -o bin/validator cmd/validator/main.go && ./bin/validator
+
 .PHONY: run
 run:
 	cp pkg/api/product.swagger.json bin/
@@ -26,3 +30,25 @@ migrate:
 	GOBIN=$(LOCAL_BIN) go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 && \
 	GOBIN=$(LOCAL_BIN) go install google.golang.org/protobuf/cmd/protoc-gen-go && \
 	GOBIN=$(LOCAL_BIN) go install google.golang.org/grpc/cmd/protoc-gen-go-grpc 
+
+.PHONY: generateMock
+generateMock:
+	~/go/bin/mockgen -source=./internal/pkg/repository/repository.go -destination=./internal/pkg/repository/mocks/repository.go 
+
+.PHONY: cover
+cover:
+	go test -short -count=1 -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out
+	rm coverage.out
+
+.PHONY: test
+test:
+	go test -v count=1 ./...
+
+.PHONY: test100
+test100:
+	go test -v count=100 ./...
+
+.PHONY: race
+race:
+	go test -v -race -count=1 ./...
